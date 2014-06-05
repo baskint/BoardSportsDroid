@@ -1,9 +1,23 @@
 package com.example.boardsportsdroid.app;
 
+import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.TextView;
+
+import retrofit.Callback;
+import retrofit.RestAdapter;
+import retrofit.RetrofitError;
+import retrofit.client.Response;
+import retrofit.http.GET;
+import retrofit.http.Path;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -12,6 +26,11 @@ public class MainActivity extends ActionBarActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        if (savedInstanceState == null) {
+            getSupportFragmentManager().beginTransaction()
+                    .add(R.id.container, new PlaceHoderFragment())
+                    .commit();
+        }
     }
 
 
@@ -33,4 +52,50 @@ public class MainActivity extends ActionBarActivity {
         }
         return super.onOptionsItemSelected(item);
     }
+
+    public interface GitHubService {
+        @GET("/users/{user}")
+        void listRepos(@Path("user") String user, Callback<GithubUser> callback);
+    }
+
+    public class GithubUser {
+        public String login;
+    }
+
+    public static class PlaceHoderFragment extends Fragment implements View.OnClickListener {
+
+        TextView scrapedContent;
+
+        @Override
+        public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstance) {
+            View rootView = inflater.inflate(R.layout.fragment_main, container, false);
+            scrapedContent = (TextView) rootView.findViewById(R.id.scraped_content);
+            Button scrapeButton = (Button) rootView.findViewById(R.id.button_scrape);
+
+            scrapeButton.setOnClickListener(this);
+            return rootView;
+        }
+
+        @Override
+        public void onClick(View view) {
+            RestAdapter restAdapter = new RestAdapter.Builder()
+                    .setEndpoint("https://api.github.com")
+                    .build();
+
+            GitHubService service = restAdapter.create(GitHubService.class);
+            service.listRepos("baskint", new Callback<GithubUser>() {
+                @Override
+                public void success(GithubUser s, Response response) {
+                    scrapedContent.setText(s.login);
+                }
+
+                @Override
+                public void failure(RetrofitError error) {
+                    Log.e("Retrofit", error.getMessage());
+                }
+            });
+
+        }
+    }
 }
+
